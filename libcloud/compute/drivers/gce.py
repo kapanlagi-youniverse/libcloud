@@ -38,7 +38,6 @@ from libcloud.compute.types import NodeState
 from libcloud.utils.iso8601 import parse_date
 
 API_VERSION = 'v1'
-DEFAULT_AGGREGATED_MAX_RESULTS = 500
 DEFAULT_TASK_COMPLETION_TIMEOUT = 180
 
 
@@ -153,7 +152,7 @@ class GCEConnection(GoogleBaseConnection):
         request_path = "/aggregated/%s" % api_name
         api_responses = []
 
-        params = {'maxResults': DEFAULT_AGGREGATED_MAX_RESULTS}
+        params = {}
         more_results = True
         while more_results:
             self.gce_params = params
@@ -1208,9 +1207,9 @@ class GCENodeDriver(NodeDriver):
         else:
             self.region = None
 
-        # We optionally check this dict for volume information
-        # to improve performance.
-        self.volume_dict = {}
+        # Volume details are looked up in this name-zone dict.
+        # It is populated if the volume name is not found or the dict is empty.
+        self._volume_dict = {}
 
     def ex_add_access_config(self, node, name, nic, nat_ip=None,
                              config_type=None):
@@ -1780,6 +1779,8 @@ class GCENodeDriver(NodeDriver):
         if 'items' in response:
             # The aggregated response returns a dict for each zone
             if zone is None:
+                # Create volume cache now for fast lookups of disk info.
+                self._ex_populate_volume_dict()
                 for v in response['items'].values():
                     for i in v.get('instances', []):
                         try:
@@ -1795,6 +1796,8 @@ class GCENodeDriver(NodeDriver):
                         # other nodes.
                         except ResourceNotFoundError:
                             pass
+                # Clear the volume cache as lookups are complete.
+                self._volume_dict = {}
             else:
                 for i in response['items']:
                     try:
@@ -4713,21 +4716,16 @@ class GCENodeDriver(NodeDriver):
                              volumes.  If True, we omit the API call and search
                              self.volumes_dict.  If False, a call to
                              disks/aggregatedList is made prior to searching
-                             self.volume_dict.
+                             self._volume_dict.
         :type     use_cache: ``bool``
 
         :return:  A StorageVolume object for the volume
         :rtype:   :class:`StorageVolume`
         """
-        if not self.volume_dict or use_cache is False:
-            # fill the volume dict by making an aggegatedList call to disks.
-            aggregated_items = self.connection.request_aggregated_items(
-                "disks")
+        if not self._volume_dict or use_cache is False:
+            # Make the API call and build volume dictionary
+            self._ex_populate_volume_dict()
 
-            # volume_dict is in the format of:
-            # { 'disk_name' : { 'zone1': disk, 'zone2': disk, ... }}
-            self.volume_dict = self._build_volume_dict(
-                aggregated_items['items'])
         return self._ex_lookup_volume(name, zone)
 
     def ex_get_region(self, name):
@@ -4940,22 +4938,44 @@ class GCENodeDriver(NodeDriver):
         :return:  A StorageVolume object for the volume.
         :rtype:   :class:`StorageVolume` or raise ``ResourceNotFoundError``.
         """
-        if volume_name not in self.volume_dict:
-            raise ResourceNotFoundError(
-                'Volume name: \'%s\' not found. Zone: %s' % (volume_name,
-                                                             zone), None, None)
+        if volume_name not in self._volume_dict:
+            # Possibly added through another thread/process, so re-populate
+            # _volume_dict and try again.  If still not found, raise exception.
+            self._ex_populate_dict()
+            if volume_name not in self._volume_dict:
+                raise ResourceNotFoundError(
+                    'Volume name: \'%s\' not found. Zone: %s' % (
+                        volume_name, zone), None, None)
         # Disk names are not unique across zones, so if zone is None or
         # 'all', we return the first one we find for that disk name.  For
         # consistency, we sort by keys and set the zone to the first key.
         if zone is None or zone is 'all':
-            zone = sorted(self.volume_dict[volume_name])[0]
+            zone = sorted(self._volume_dict[volume_name])[0]
 
-        volume = self.volume_dict[volume_name].get(zone, None)
+        volume = self._volume_dict[volume_name].get(zone, None)
         if not volume:
             raise ResourceNotFoundError(
                 'Volume \'%s\' not found for zone %s.' % (volume_name,
                                                           zone), None, None)
         return self._to_storage_volume(volume)
+
+    def _ex_populate_volume_dict(self):
+        """
+        Fetch the volume information using disks/aggregatedList
+        and store it in _volume_dict.
+
+        return:  ``None``
+        """
+        # fill the volume dict by making an aggegatedList call to disks.
+        aggregated_items = self.connection.request_aggregated_items(
+            "disks")
+
+        # _volume_dict is in the format of:
+        # { 'disk_name' : { 'zone1': disk, 'zone2': disk, ... }}
+        self._volume_dict = self._build_volume_dict(
+            aggregated_items['items'])
+
+        return None
 
     def _catch_error(self, ignore_errors=False):
         """
