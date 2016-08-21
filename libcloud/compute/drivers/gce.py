@@ -2452,6 +2452,7 @@ class GCENodeDriver(NodeDriver):
 
     def create_node(self, name, size, image, location=None,
                     ex_network='default', ex_subnetwork=None,
+                    ex_private_ip=None,
                     ex_tags=None, ex_metadata=None,
                     ex_boot_disk=None, use_existing_disk=True,
                     external_ip='ephemeral', ex_disk_type='pd-standard',
@@ -2482,6 +2483,10 @@ class GCENodeDriver(NodeDriver):
 
         :keyword  ex_subnetwork: The subnetwork to associate with the node.
         :type     ex_subnetwork: ``str`` or :class:`GCESubnetwork`
+
+        :keyword  ex_private_ip: The private ip address assigned to the node.
+                                 Auto-assigned if `None`.
+        :type     ex_private_ip: ``str`` or ``None``
 
         :keyword  ex_tags: A list of tags to associate with the node.
         :type     ex_tags: ``list`` of ``str`` or ``None``
@@ -2649,7 +2654,8 @@ class GCENodeDriver(NodeDriver):
                                                    ex_on_host_maintenance,
                                                    ex_automatic_restart,
                                                    ex_preemptible,
-                                                   ex_subnetwork)
+                                                   ex_subnetwork,
+                                                   ex_private_ip)
         self.connection.async_request(request, method='POST', data=node_data)
         return self.ex_get_node(name, location.name)
 
@@ -4992,7 +4998,8 @@ class GCENodeDriver(NodeDriver):
                          ex_disks_gce_struct=None, ex_nic_gce_struct=None,
                          ex_on_host_maintenance=None,
                          ex_automatic_restart=None,
-                         ex_preemptible=None, ex_subnetwork=None):
+                         ex_preemptible=None, ex_subnetwork=None,
+                         ex_private_ip=None):
         """
         Returns a request and body to create a new node.  This is a helper
         method to support both :class:`create_node` and
@@ -5103,8 +5110,12 @@ class GCENodeDriver(NodeDriver):
                                          not be preemptible)
         :type     ex_preemptible: ``bool`` or ``None``
 
-        :param  ex_subnetwork: The network to associate with the node.
-        :type   ex_subnetwork: :class:`GCESubnetwork`
+        :keyword  ex_subnetwork: The subnetwork to associate with the node.
+        :type     ex_subnetwork: :class:`GCESubnetwork` or ``None``
+
+        :keyword  ex_private_ip: The private ip address assigned to the node.
+                                 Auto-assigned if `None`.
+        :type     ex_private_ip: ``str`` or ``None``
 
         :return:  A tuple containing a request string and a node_data dict.
         :rtype:   ``tuple`` of ``str`` and ``dict``
@@ -5216,6 +5227,8 @@ class GCENodeDriver(NodeDriver):
                    'network': network.extra['selfLink']}]
             if ex_subnetwork:
                 ni[0]['subnetwork'] = ex_subnetwork.extra['selfLink']
+            if ex_private_ip:
+                ni[0]['networkIP'] = ex_private_ip
             if external_ip:
                 access_configs = [{'name': 'External NAT',
                                    'type': 'ONE_TO_ONE_NAT'}]
