@@ -153,13 +153,14 @@ class GCEConnection(GoogleBaseConnection):
         api_responses = []
 
         params = {}
-        more_results = True
-        while more_results:
+        while True:
             self.gce_params = params
             response = self.request(request_path, method='GET').object
             if 'items' in response:
                 api_responses.append(response)
-            more_results = 'pageToken' in params
+            if not response.get('nextPageToken'):
+                break
+            params['pageToken'] = response['nextPageToken']
         return self._merge_response_items(api_name, api_responses)
 
     def _merge_response_items(self, list_name, response_list):
