@@ -2944,6 +2944,7 @@ class GCENodeDriver(NodeDriver):
             self, name, size, image, location=None, ex_network='default',
             ex_subnetwork=None, ex_tags=None, ex_metadata=None,
             ex_boot_disk=None, use_existing_disk=True, external_ip='ephemeral',
+            ex_private_ip=None,
             ex_disk_type='pd-standard', ex_disk_auto_delete=True,
             ex_service_accounts=None, description=None, ex_can_ip_forward=None,
             ex_disks_gce_struct=None, ex_nic_gce_struct=None,
@@ -2992,6 +2993,10 @@ class GCENodeDriver(NodeDriver):
                                be used.  To use an existing static IP address,
                                a GCEAddress object should be passed in.
         :type     external_ip: :class:`GCEAddress` or ``str`` or ``None``
+
+        :keyword  ex_private_ip: The private ip address assigned to the node.
+                                 Auto-assigned if `None`.
+        :type     ex_private_ip: ``str`` or ``None``
 
         :keyword  ex_disk_type: Specify a pd-standard (default) disk or pd-ssd
                                 for an SSD disk.
@@ -3129,7 +3134,7 @@ class GCENodeDriver(NodeDriver):
             ex_boot_disk, external_ip, ex_disk_type, ex_disk_auto_delete,
             ex_service_accounts, description, ex_can_ip_forward,
             ex_disks_gce_struct, ex_nic_gce_struct, ex_on_host_maintenance,
-            ex_automatic_restart, ex_preemptible, ex_subnetwork)
+            ex_automatic_restart, ex_preemptible, ex_subnetwork, ex_private_ip)
         self.connection.async_request(request, method='POST', data=node_data)
         return self.ex_get_node(name, location.name)
 
@@ -5698,7 +5703,7 @@ class GCENodeDriver(NodeDriver):
             ex_service_accounts=None, description=None, ex_can_ip_forward=None,
             ex_disks_gce_struct=None, ex_nic_gce_struct=None,
             ex_on_host_maintenance=None, ex_automatic_restart=None,
-            ex_preemptible=None, ex_subnetwork=None):
+            ex_preemptible=None, ex_subnetwork=None, ex_private_ip=None):
         """
         Returns a request and body to create a new node.  This is a helper
         method to support both :class:`create_node` and
@@ -5809,8 +5814,12 @@ class GCENodeDriver(NodeDriver):
                                          not be preemptible)
         :type     ex_preemptible: ``bool`` or ``None``
 
-        :param  ex_subnetwork: The network to associate with the node.
-        :type   ex_subnetwork: :class:`GCESubnetwork`
+        :keyword  ex_subnetwork: The subnetwork to associate with the node.
+        :type     ex_subnetwork: :class:`GCESubnetwork` or ``None``
+
+        :keyword  ex_private_ip: The private ip address assigned to the node.
+                                 Auto-assigned if `None`.
+        :type     ex_private_ip: ``str`` or ``None``
 
         :return:  A tuple containing a request string and a node_data dict.
         :rtype:   ``tuple`` of ``str`` and ``dict``
@@ -5922,6 +5931,8 @@ class GCENodeDriver(NodeDriver):
                    'network': network.extra['selfLink']}]
             if ex_subnetwork:
                 ni[0]['subnetwork'] = ex_subnetwork.extra['selfLink']
+            if ex_private_ip:
+                ni[0]['networkIP'] = ex_private_ip
             if external_ip:
                 access_configs = [{'name': 'External NAT',
                                    'type': 'ONE_TO_ONE_NAT'}]
