@@ -7016,7 +7016,10 @@ class GCENodeDriver(NodeDriver):
         :return:  A Network object for the network
         :rtype:   :class:`GCENetwork`
         """
-        request = '/global/networks/%s' % (name)
+        if name.startswith('https://'):
+            request = name
+        else:
+            request = '/global/networks/%s' % (name)
         response = self.connection.request(request, method='GET').object
         return self._to_network(response)
 
