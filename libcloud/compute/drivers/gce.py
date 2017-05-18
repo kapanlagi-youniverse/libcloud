@@ -1718,6 +1718,7 @@ class GCENodeDriver(NodeDriver):
         "logging-write": "logging.write",
         "monitoring": "monitoring",
         "monitoring-write": "monitoring.write",
+        "pubsub": "pubsub",
         "service-control": "servicecontrol",
         "service-management": "service.management",
         "sql": "sqlservice",
@@ -1726,6 +1727,7 @@ class GCENodeDriver(NodeDriver):
         "storage-ro": "devstorage.read_only",
         "storage-rw": "devstorage.read_write",
         "taskqueue": "taskqueue",
+        "trace-append": "trace.append",
         "useraccounts-ro": "cloud.useraccounts.readonly",
         "useraccounts-rw": "cloud.useraccounts",
         "userinfo-email": "userinfo.email"
