@@ -7589,7 +7589,7 @@ class GCENodeDriver(NodeDriver):
         :rtype:   :class:`GCENodeImage` or ``None``
         """
         project_images_pages = self.ex_list(
-            self.list_images, ex_project=project, ex_include_deprecated=True)
+            self.list_images, ex_project=project, ex_include_deprecated=True).page()
         partial_match = []
         for page in project_images_pages:
             for image in page:
