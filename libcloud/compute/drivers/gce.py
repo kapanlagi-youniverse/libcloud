@@ -151,7 +151,7 @@ class GCEConnection(GoogleBaseConnection):
         request_path = "/aggregated/%s" % api_name
         api_responses = []
 
-        params = {'maxResults': 500}
+        params = {'maxResults': 2147483647}
         more_results = True
         while more_results:
             self.gce_params = params
@@ -281,7 +281,7 @@ class GCEList(object):
         self.params['filter'] = expression
         return self
 
-    def page(self, max_results=500):
+    def page(self, max_results=2147483647):
         """
         Limit the number of results by each iteration.
 
