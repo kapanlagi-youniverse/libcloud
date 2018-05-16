@@ -1716,6 +1716,7 @@ class GCENodeDriver(NodeDriver):
         "compute-rw": "compute",
         "datastore": "datastore",
         "logging-write": "logging.write",
+        "logging-admin": "logging.admin",
         "monitoring": "monitoring",
         "monitoring-write": "monitoring.write",
         "pubsub": "pubsub",
