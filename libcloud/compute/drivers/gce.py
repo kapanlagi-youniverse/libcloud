@@ -1755,7 +1755,9 @@ class GCENodeDriver(NodeDriver):
         "taskqueue": "taskqueue",
         "useraccounts-ro": "cloud.useraccounts.readonly",
         "useraccounts-rw": "cloud.useraccounts",
-        "userinfo-email": "userinfo.email"
+        "userinfo-email": "userinfo.email",
+        "cloud-source-repos": "source.full_control",
+        "cloud-source-repos-ro": "source.read_only"
     }
 
     IMAGE_PROJECTS = {
